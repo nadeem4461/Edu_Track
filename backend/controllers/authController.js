@@ -1,4 +1,4 @@
-
+import Student from '../models/Student.js';
 export const studentLogin= async (req,res)=>{
     try {
         const {phone , day, month, year} = req.body;
