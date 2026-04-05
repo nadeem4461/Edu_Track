@@ -1,5 +1,6 @@
 import Attendance from '../models/Attendence.js';
 import Student from '../models/Student.js';
+import { sendAbsentAlert } from '../utils/sendMessage.js';
 
 // @desc    Mark attendance for a student
 // @route   POST /api/attendance
@@ -21,10 +22,18 @@ export const markAttendance = async (req, res) => {
     const attendance = await Attendance.findOneAndUpdate(
       { studentId, date: attendanceDate },
       { status },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     // TODO: Later, we will trigger the WhatsApp message here if status === 'Absent'
+
+    if(status ==='Absent' && !attendance.messageSent){
+      const isSent = await sendAbsentAlert(student.parentPhone, student.name, attendanceDate);
+    if(isSent){
+      attendance.messageSent = true;
+      await attendance.save();
+    }
+    }
 
     res.status(201).json(attendance);
   } catch (error) {
