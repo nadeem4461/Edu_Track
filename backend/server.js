@@ -5,6 +5,7 @@ import connectDB  from './config/db.js';
 import studentRoutes from './routes/studentRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import feeRoutes from './routes/feeRoutes.js';
 dotenv.config();
 
 connectDB();
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/fees', feeRoutes);
 
 app.get('/', (req, res) => {
     res.send('API is running for edutrack...');

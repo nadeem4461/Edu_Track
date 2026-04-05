@@ -40,3 +40,13 @@ export const markAttendance = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+// Add this to the bottom of the file
+export const getStudentAttendance = async (req, res) => {
+  try {
+    // Find all attendance records for this specific student, sorted by newest first
+    const records = await Attendance.find({ studentId: req.params.studentId }).sort({ date: -1 });
+    res.json(records);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
