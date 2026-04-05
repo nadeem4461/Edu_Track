@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB  from './config/db.js';
 import studentRoutes from './routes/studentRoutes.js';
+import attendanceRoutes from './routes/attendanceRoutes.js';
 dotenv.config();
 
 connectDB();
@@ -12,9 +13,13 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/students', studentRoutes);
+app.use('/api/attendance', attendanceRoutes);
+
 app.get('/', (req, res) => {
     res.send('API is running for edutrack...');
 });
+
+
 
 const PORT = process.env.PORT || 5000;
 
