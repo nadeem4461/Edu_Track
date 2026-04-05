@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Login';
 import StudentDashboard from './StudentDashboard';
+import AdminDashboard from './AdminDashboard';
+
 
 function App() {
   return (
@@ -8,7 +10,7 @@ function App() {
       <Routes>
         {/* The Default Page is Login */}
         <Route path="/" element={<Login />} />
-        
+        <Route path="/admin" element={<AdminDashboard />} />
         {/* The Private Dashboard Page */}
         <Route path="/dashboard" element={<StudentDashboard />} />
 
