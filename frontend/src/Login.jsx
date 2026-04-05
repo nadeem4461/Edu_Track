@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom'; 
 
 const Login = () => {
+   const navigate = useNavigate();
+
   const [phone, setPhone] = useState('');
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
@@ -24,12 +27,9 @@ const Login = () => {
         month: month.toString(),
         year: year.toString()
       });
+      localStorage.setItem('studentData', JSON.stringify(response.data.student));
+      navigate('/dashboard');
 
-      // If successful, show the student data
-      setMessage(`Welcome back, ${response.data.student.name}! Your balance is Rs. ${response.data.student.balance}`);
-      console.log(response.data);
-      
-      // TODO: Later, we will redirect the user to their dashboard here
       
     } catch (error) {
       setMessage(error.response?.data?.message || 'Login Failed. Try again.');
