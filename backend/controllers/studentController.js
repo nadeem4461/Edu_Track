@@ -4,20 +4,18 @@ import Student from '../models/Student.js';
 // @route   POST /api/students
 export const addStudent = async (req, res) => {
   try {
-    const { name, parentPhone, className, totalFee } = req.body;
+    const { name, className, parentPhone, loginPhone, totalFee, day, month, year } = req.body;
 
-    // Check if student already exists (Optional logic)
-    const studentExists = await Student.findOne({ parentPhone, name });
-    if (studentExists) {
-      return res.status(400).json({ message: 'Student already registered with this phone number' });
-    }
+    const dob = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 
     const student = await Student.create({
       name,
-      parentPhone,
       className,
+      parentPhone,
+      loginPhone,
       totalFee,
-      pendingBalance: totalFee // Initial balance is the full fee
+      dob,
+      pendingBalance: totalFee
     });
 
     res.status(201).json(student);
