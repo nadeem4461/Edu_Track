@@ -5,6 +5,7 @@ import axios from 'axios';
 const StudentDashboard = () => {
   const [student, setStudent] = useState(null);
   const [attendance, setAttendance] = useState([]);
+  const [announcements, setAnnouncements] = useState([]); 
   const navigate = useNavigate();
 
   // Calendar setup
@@ -15,19 +16,25 @@ const StudentDashboard = () => {
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const paddingArray = Array.from({ length: firstDayOfMonth }, (_, i) => i);
 
-  // 1. DUMMY REMARKS DATA (We will connect this to the backend later!)
-  const sirRemarks = [
-    { id: 1, type: 'Performance', date: '2026-04-01', text: 'Excellent score in the recent Calculus mock test.' },
-    { id: 2, type: 'Complaint', date: '2026-03-28', text: 'Arjun was talking during the physics lecture. Needs to focus.' },
-    { id: 3, type: 'Note', date: '2026-03-15', text: 'Please bring the new RD Sharma textbook from next week.' }
-  ];
+  const fetchFreshStudentData = async (studentId) => {
+    try {
+      const { data } = await axios.get(`http://localhost:5000/api/students/${studentId}`);
+      setStudent(data); // Overwrites stale local data with fresh database data!
+    } catch (error) {
+      console.error("Error fetching fresh student data:", error);
+    }
+  };
 
   useEffect(() => {
     const savedData = localStorage.getItem('studentData');
     if (savedData) {
       const parsedStudent = JSON.parse(savedData);
-      setStudent(parsedStudent);
+      setStudent(parsedStudent); // Instant load from local storage
+      
+      // Secretly fetch the newest data from the database in the background!
+      fetchFreshStudentData(parsedStudent.id); 
       fetchAttendance(parsedStudent.id);
+      fetchAnnouncements(); 
     } else {
       navigate('/');
     }
@@ -42,13 +49,21 @@ const StudentDashboard = () => {
     }
   };
 
+  const fetchAnnouncements = async () => {
+    try {
+      const { data } = await axios.get('http://localhost:5000/api/announcements');
+      setAnnouncements(data);
+    } catch (error) {
+      console.error("Error fetching announcements:", error);
+    }
+  };
+
   const getDayStatus = (day) => {
     const dateToCheck = new Date(today.getFullYear(), today.getMonth(), day).toDateString();
     const record = attendance.find(r => new Date(r.date).toDateString() === dateToCheck);
     return record ? record.status : null;
   };
 
-  // 2. CALCULATE ATTENDANCE PERCENTAGE
   const totalClasses = attendance.length;
   const presentClasses = attendance.filter(r => r.status === 'Present').length;
   const attendancePercentage = totalClasses === 0 ? 0 : Math.round((presentClasses / totalClasses) * 100);
@@ -59,6 +74,13 @@ const StudentDashboard = () => {
   };
 
   if (!student) return <div className="p-10 text-center">Loading...</div>;
+
+  // --- THE FIX: GRAB THE LATEST TEST SCORE ---
+  let latestScore = null;
+  if (student.scores && student.scores.length > 0) {
+    // Get the very last item in the scores array (the newest test)
+    latestScore = student.scores[student.scores.length - 1]; 
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -71,26 +93,22 @@ const StudentDashboard = () => {
 
       <div className="max-w-6xl mx-auto mt-8 p-4">
         
-        {/* Top Header */}
         <div className="bg-white rounded-lg shadow p-6 mb-6 border-l-4 border-red-700 flex justify-between items-center">
           <div>
             <h2 className="text-3xl font-bold text-gray-800">
               Welcome back, <span className="text-red-700">{student.name}</span>
             </h2>
-            <p className="text-gray-500 mt-1">Student ID: {student.id.substring(0, 8).toUpperCase()}</p>
+            <p className="text-gray-500 mt-1">Student ID: {student.id ? student.id.substring(0, 8).toUpperCase() : student._id?.substring(0, 8).toUpperCase()}</p>
           </div>
         </div>
 
-        {/* QUICK STATS ROW */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          {/* Fee Stat */}
           <div className="bg-white rounded-lg shadow p-6 border-t-4 border-red-500">
             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Pending Fees</h3>
-            <p className="text-3xl font-bold text-red-600">Rs. {student.balance}</p>
-            {student.balance > 0 ? <p className="text-xs text-red-500 mt-1">Clear by 10th of month</p> : <p className="text-xs text-green-500 mt-1">All clear!</p>}
+            <p className="text-3xl font-bold text-red-600">Rs. {student.pendingBalance !== undefined ? student.pendingBalance : student.balance}</p>
+            {(student.pendingBalance !== undefined ? student.pendingBalance : student.balance) > 0 ? <p className="text-xs text-red-500 mt-1">Clear by 10th of month</p> : <p className="text-xs text-green-500 mt-1">All clear!</p>}
           </div>
 
-          {/* Percentage Stat */}
           <div className="bg-white rounded-lg shadow p-6 border-t-4 border-blue-500">
             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Overall Attendance</h3>
             <p className={`text-3xl font-bold ${attendancePercentage >= 75 ? 'text-green-600' : 'text-red-600'}`}>
@@ -99,18 +117,32 @@ const StudentDashboard = () => {
             <p className="text-xs text-gray-500 mt-1">{presentClasses} out of {totalClasses} classes attended</p>
           </div>
 
-          {/* Performance Stat Placeholder */}
+          {/* --- THE UPDATED SCORE CARD --- */}
           <div className="bg-white rounded-lg shadow p-6 border-t-4 border-yellow-500">
             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Latest Test Score</h3>
-            <p className="text-3xl font-bold text-gray-800">85%</p>
-            <p className="text-xs text-yellow-600 mt-1">Calculus Weekly Mock</p>
+            {latestScore ? (
+              <>
+                <p className="text-3xl font-bold text-gray-800">
+                  {Math.round((latestScore.marksObtained / latestScore.totalMarks) * 100)}%
+                </p>
+                <p className="text-xs text-yellow-600 mt-1 font-bold truncate">
+                  {latestScore.testName}
+                </p>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  {latestScore.marksObtained} out of {latestScore.totalMarks} marks
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-3xl font-bold text-gray-300">--%</p>
+                <p className="text-xs text-gray-500 mt-1">No tests taken yet</p>
+              </>
+            )}
           </div>
         </div>
           
-        {/* MAIN TWO-COLUMN LAYOUT */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-          {/* LEFT COLUMN: The Visual Calendar (Takes up 2 parts) */}
           <div className="lg:col-span-2 bg-white border border-gray-200 p-6 rounded-lg shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-800">Attendance Tracker</h3>
@@ -143,26 +175,40 @@ const StudentDashboard = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Sir's Remarks & Complaints (Takes up 1 part) */}
-          <div className="lg:col-span-1 bg-white border border-gray-200 p-6 rounded-lg shadow-sm max-h-[450px] overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 sticky top-0 bg-white pb-2 border-b">Sir's Remarks</h3>
-            
-            <div className="space-y-4">
-              {sirRemarks.map((remark) => (
-                <div key={remark.id} className={`p-3 rounded border-l-4 ${
-                  remark.type === 'Complaint' ? 'bg-red-50 border-red-500' : 
-                  remark.type === 'Performance' ? 'bg-green-50 border-green-500' : 'bg-blue-50 border-blue-500'
-                }`}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className={`text-xs font-bold uppercase ${
-                      remark.type === 'Complaint' ? 'text-red-700' : 
-                      remark.type === 'Performance' ? 'text-green-700' : 'text-blue-700'
-                    }`}>{remark.type}</span>
-                    <span className="text-[10px] text-gray-500">{remark.date}</span>
+          <div className="lg:col-span-1 space-y-6">
+            {/* NOTICE BOARD */}
+            <div className="bg-blue-600 text-white p-6 rounded-lg shadow-lg">
+              <h3 className="text-lg font-bold mb-4 flex items-center">📢 Notice Board</h3>
+              <div className="space-y-4 max-h-60 overflow-y-auto">
+                {announcements.filter(a => a.targetBatch === 'All' || a.targetBatch === student.className).map(a => (
+                  <div key={a._id} className="border-b border-blue-400 pb-2">
+                    <p className="font-bold text-sm">{a.title}</p>
+                    <p className="text-xs opacity-90">{a.message}</p>
+                    <p className="text-[10px] opacity-75 mt-1">{new Date(a.date).toLocaleDateString()}</p>
                   </div>
-                  <p className="text-sm text-gray-700">{remark.text}</p>
-                </div>
-              ))}
+                ))}
+                {announcements.length === 0 && <p className="text-xs italic">No new notices.</p>}
+              </div>
+            </div>
+
+            {/* REAL DATABASE REMARKS */}
+            <div className="bg-white border border-gray-200 p-6 rounded-lg shadow-sm max-h-[300px] overflow-y-auto">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 sticky top-0 bg-white">Sir's Feedback</h3>
+              <div className="space-y-4">
+                {student.remarks && student.remarks.length > 0 ? (
+                  student.remarks.slice().reverse().map((remark, idx) => (
+                    <div key={idx} className={`p-3 rounded border-l-4 ${
+                      remark.type === 'Complaint' ? 'bg-red-50 border-red-500' : 
+                      remark.type === 'Performance' ? 'bg-green-50 border-green-500' : 'bg-blue-50 border-blue-500'
+                    }`}>
+                      <p className="text-xs font-bold uppercase mb-1">{remark.type}</p>
+                      <p className="text-sm text-gray-700">{remark.text}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-400 italic text-sm">No remarks yet.</p>
+                )}
+              </div>
             </div>
           </div>
 
