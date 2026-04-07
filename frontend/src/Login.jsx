@@ -1,100 +1,112 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; 
 
 const Login = () => {
-   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('student'); // 'student' or 'admin'
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
+  // Student Form State
   const [phone, setPhone] = useState('');
-  const [day, setDay] = useState('');
-  const [month, setMonth] = useState('');
-  const [year, setYear] = useState('');
-  const [message, setMessage] = useState('');
+  const [dob, setDob] = useState('');
 
-  // Generate arrays for our dropdowns
-  const days = Array.from({ length: 31 }, (_, i) => i + 1);
-  const months = Array.from({ length: 12 }, (_, i) => i + 1);
-  // Years from 1995 to 2020
-  const years = Array.from({ length: 26 }, (_, i) => 2020 - i); 
+  // Admin Form State
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleLogin = async (e) => {
-    e.preventDefault(); // Prevents the page from refreshing
-    
+  const handleStudentLogin = async (e) => {
+    e.preventDefault();
+    setError('');
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
-        phone,
-        day: day.toString(),
-        month: month.toString(),
-        year: year.toString()
+      const { data } = await axios.post('http://localhost:5000/api/auth/student', { 
+        loginPhone: phone, 
+        dob: dob 
       });
-      localStorage.setItem('studentData', JSON.stringify(response.data.student));
+      // Save data locally and redirect
+      localStorage.setItem('studentData', JSON.stringify({ id: data._id, name: data.name, className: data.className }));
       navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed');
+    }
+  };
 
-      
-    } catch (error) {
-      setMessage(error.response?.data?.message || 'Login Failed. Try again.');
+  const handleAdminLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      const { data } = await axios.post('http://localhost:5000/api/auth/admin', { username, password });
+      localStorage.setItem('adminData', JSON.stringify(data));
+      navigate('/admin');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed');
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded shadow-md">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-xl shadow-2xl overflow-hidden">
         
-        {/* Header matching your college vibe */}
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-red-700">EduTrack Portal</h2>
-          <p className="mt-2 text-gray-600">Login with your Phone and DOB</p>
+        {/* Header */}
+        <div className="bg-red-700 p-6 text-center">
+          <h1 className="text-3xl font-bold text-white tracking-wider">EduTrack</h1>
+          <p className="text-red-200 mt-1">Tuition Management System</p>
         </div>
 
-        {/* The Login Form */}
-        <form onSubmit={handleLogin} className="space-y-4">
-          
-          {/* Phone Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Login Phone Number</label>
-            <input 
-              type="text" 
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-500"
-              placeholder="e.g. 9876543211"
-            />
-          </div>
-
-          {/* DOB Dropdowns */}
-          <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700">Date of Birth</label>
-            <div className="flex space-x-2">
-              <select required value={day} onChange={(e) => setDay(e.target.value)} className="w-1/3 px-3 py-2 border rounded focus:ring-red-500">
-                <option value="">Day</option>
-                {days.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-
-              <select required value={month} onChange={(e) => setMonth(e.target.value)} className="w-1/3 px-3 py-2 border rounded focus:ring-red-500">
-                <option value="">Month</option>
-                {months.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-
-              <select required value={year} onChange={(e) => setYear(e.target.value)} className="w-1/3 px-3 py-2 border rounded focus:ring-red-500">
-                <option value="">Year</option>
-                {years.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <button type="submit" className="w-full py-2 font-bold text-white bg-red-700 rounded hover:bg-red-800">
-            LOGIN
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200">
+          <button 
+            onClick={() => { setActiveTab('student'); setError(''); }}
+            className={`flex-1 py-4 font-bold text-sm uppercase tracking-wider transition-colors ${activeTab === 'student' ? 'text-red-700 border-b-4 border-red-700 bg-red-50' : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            👨‍🎓 Student
           </button>
-        </form>
+          <button 
+            onClick={() => { setActiveTab('admin'); setError(''); }}
+            className={`flex-1 py-4 font-bold text-sm uppercase tracking-wider transition-colors ${activeTab === 'admin' ? 'text-gray-900 border-b-4 border-gray-900 bg-gray-100' : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            👨‍🏫 Admin
+          </button>
+        </div>
 
-        {/* Status Message */}
-        {message && (
-          <div className={`p-3 text-center rounded ${message.includes('Welcome') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-            {message}
-          </div>
-        )}
+        <div className="p-8">
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6 text-sm font-bold text-center">
+              {error}
+            </div>
+          )}
 
+          {activeTab === 'student' ? (
+            <form onSubmit={handleStudentLogin} className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Registered Phone Number</label>
+                <input required type="text" placeholder="Enter mobile number" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none transition-all" value={phone} onChange={e => setPhone(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Date of Birth (Password)</label>
+                <input required type="date" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none transition-all text-gray-700" value={dob} onChange={e => setDob(e.target.value)} />
+              </div>
+              <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-colors text-lg">
+                Login to Portal
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleAdminLogin} className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Username</label>
+                <input required type="text" placeholder="Admin username" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 outline-none transition-all" value={username} onChange={e => setUsername(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Password</label>
+                <input required type="password" placeholder="••••••••" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 outline-none transition-all" value={password} onChange={e => setPassword(e.target.value)} />
+              </div>
+              <button type="submit" className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-colors text-lg">
+                Access Dashboard
+              </button>
+            </form>
+          )}
+        </div>
+        
       </div>
     </div>
   );

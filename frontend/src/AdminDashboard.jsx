@@ -8,6 +8,7 @@ const AdminDashboard = () => {
   const [students, setStudents] = useState([]);
   const [allAttendance, setAllAttendance] = useState([]); 
   const [announcements, setAnnouncements] = useState([]); 
+  const [materials, setMaterials] = useState([]); // NEW: Materials State
   
   const [activeTab, setActiveTab] = useState('classroom'); 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -23,6 +24,9 @@ const AdminDashboard = () => {
   const [formData, setFormData] = useState({ name: '', className: '', parentPhone: '', loginPhone: '', totalFee: '', day: '', month: '', year: '' });
   const [remarkData, setRemarkData] = useState({ type: 'Note', text: '' });
   const [newNotice, setNewNotice] = useState({ title: '', message: '', targetBatch: 'All', sendWhatsapp: false });
+  
+  // NEW: Material Form State
+  const [newMaterial, setNewMaterial] = useState({ title: '', description: '', batch: 'All', driveLink: '' });
 
   const [testDetails, setTestDetails] = useState({ testName: '', totalMarks: 100 });
   const [studentMarks, setStudentMarks] = useState({});
@@ -33,12 +37,16 @@ const AdminDashboard = () => {
       const attendanceRes = await axios.get('http://localhost:5000/api/attendance/all');
       
       let noticeRes = { data: [] };
-      try { noticeRes = await axios.get('http://localhost:5000/api/announcements'); } 
-      catch (e) { console.warn("Notices API not found yet, skipping."); }
+      try { noticeRes = await axios.get('http://localhost:5000/api/announcements'); } catch (e) {}
+      
+      // Fetch Materials
+      let matRes = { data: [] };
+      try { matRes = await axios.get('http://localhost:5000/api/materials'); } catch (e) {}
       
       setStudents(studentRes.data);
       setAllAttendance(attendanceRes.data);
       setAnnouncements(noticeRes.data);
+      setMaterials(matRes.data);
     } catch (error) { console.error("Error fetching data:", error); }
   };
 
@@ -48,9 +56,7 @@ const AdminDashboard = () => {
     if (!recordDate) return false;
     if (recordDate === targetDate) return true;
     const d = new Date(recordDate);
-    const localYYYYMMDD = d.getFullYear() + '-' + 
-                          String(d.getMonth() + 1).padStart(2, '0') + '-' + 
-                          String(d.getDate()).padStart(2, '0');
+    const localYYYYMMDD = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     return localYYYYMMDD === targetDate;
   };
 
@@ -89,10 +95,9 @@ const AdminDashboard = () => {
 
   // --- ACTIONS ---
   const handleDeleteStudent = async (studentId, studentName) => {
-    if (!window.confirm(`🚨 DANGER ZONE 🚨\n\nAre you absolutely sure you want to permanently delete ${studentName}?`)) return;
+    if (!window.confirm(`Are you absolutely sure you want to permanently delete ${studentName}?`)) return;
     try {
       await axios.delete(`http://localhost:5000/api/students/${studentId}`);
-      alert(`${studentName} has been removed.`);
       fetchData();
     } catch (error) { alert('Error removing student.'); }
   };
@@ -101,14 +106,11 @@ const AdminDashboard = () => {
     let phone = parentPhone.replace(/\D/g, ''); 
     if (phone.length === 10) phone = '91' + phone; 
     const message = `Hello, this is a gentle reminder from Sir's Tuition. \n\nFees of *Rs. ${pendingBalance}* are currently pending for *${studentName}*. Please clear the dues at your earliest convenience. Thank you!`;
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handleMarkAttendance = async (studentId, clickedStatus, currentStatus) => {
     const finalStatus = currentStatus === clickedStatus ? 'Unmarked' : clickedStatus;
-    
     setAllAttendance(prev => {
       const existingIndex = prev.findIndex(r => r.studentId === studentId && isSameDate(r.date, selectedDate));
       if (existingIndex >= 0) {
@@ -118,11 +120,10 @@ const AdminDashboard = () => {
       }
       return [...prev, { studentId, status: finalStatus, date: selectedDate }];
     });
-    
     try {
       await axios.post('http://localhost:5000/api/attendance', { studentId, status: finalStatus, date: selectedDate });
       fetchData(); 
-    } catch (error) { alert('Network Error!'); fetchData(); }
+    } catch (error) { fetchData(); }
   };
 
   const handleMarkPaid = async (studentId, amount) => {
@@ -139,7 +140,6 @@ const AdminDashboard = () => {
       await axios.post(`http://localhost:5000/api/students/${selectedStudent._id}/remarks`, remarkData);
       setShowRemarkModal(false);
       setRemarkData({ type: 'Note', text: '' });
-      alert('Remark added successfully!');
       fetchData();
     } catch (error) { alert('Error saving remark'); }
   };
@@ -158,7 +158,6 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       await axios.post('http://localhost:5000/api/announcements', newNotice);
-      alert(newNotice.sendWhatsapp ? 'Notice saved AND broadcasted to WhatsApp!' : 'Notice posted to Dashboards!');
       setNewNotice({ title: '', message: '', targetBatch: 'All', sendWhatsapp: false });
       fetchData();
     } catch (error) { alert('Error posting announcement.'); }
@@ -167,118 +166,80 @@ const AdminDashboard = () => {
   const handleSaveScores = async (e) => {
     e.preventDefault();
     if (!testDetails.testName) return alert("Please enter a Test Name!");
-    
     try {
       const promises = Object.entries(studentMarks).map(([studentId, marksObtained]) => {
         if (marksObtained !== '') { 
           return axios.post(`http://localhost:5000/api/students/${studentId}/scores`, {
-            testName: testDetails.testName,
-            totalMarks: testDetails.totalMarks,
-            marksObtained: Number(marksObtained)
+            testName: testDetails.testName, totalMarks: testDetails.totalMarks, marksObtained: Number(marksObtained)
           });
         }
       });
-      
       await Promise.all(promises);
-      alert("All marks saved successfully!");
-      setStudentMarks({}); 
-      setTestDetails({ testName: '', totalMarks: 100 });
+      alert("Scores saved!");
+      setStudentMarks({}); setTestDetails({ testName: '', totalMarks: 100 });
       fetchData();
-    } catch (error) {
-      console.error(error);
-      alert('Error saving scores.');
-    }
+    } catch (error) { alert('Error saving scores.'); }
+  };
+
+  // NEW: Handle Material Upload
+  const handlePostMaterial = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post('http://localhost:5000/api/materials', newMaterial);
+      setNewMaterial({ title: '', description: '', batch: 'All', driveLink: '' });
+      alert("Material uploaded successfully!");
+      fetchData();
+    } catch (error) { alert('Error uploading material.'); }
+  };
+
+  // NEW: Delete Material
+  const handleDeleteMaterial = async (id) => {
+    if(!window.confirm("Delete this material link?")) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/materials/${id}`);
+      fetchData();
+    } catch (error) { alert('Error deleting material.'); }
   };
 
   // --- PDF GENERATION ---
-  
   const generateFeePDF = () => {
     const doc = new jsPDF();
     doc.text(`EduTrack - Pending Fee Report (${selectedBatch})`, 14, 15);
     const defaulters = filteredStudents.filter(s => s.pendingBalance > 0);
-    autoTable(doc, {
-      head: [['Student Name', 'Class', 'Parent Phone', 'Due Amount']],
-      body: defaulters.map(s => [s.name, s.className, s.parentPhone, `Rs. ${s.pendingBalance}`]),
-      startY: 20,
-    });
+    autoTable(doc, { head: [['Student Name', 'Class', 'Parent Phone', 'Due Amount']], body: defaulters.map(s => [s.name, s.className, s.parentPhone, `Rs. ${s.pendingBalance}`]), startY: 20 });
     doc.save(`Fee-Report-${selectedBatch}.pdf`);
   };
 
   const generateAttendancePDF = () => {
     const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text(`Daily Attendance Report`, 14, 15);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    const dateObj = new Date(selectedDate);
-    const formattedDate = dateObj.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+    doc.setFontSize(16); doc.text(`Daily Attendance Report`, 14, 15); doc.setFontSize(11); doc.setTextColor(100);
+    const formattedDate = new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
     doc.text(`Date: ${formattedDate}  |  Batch: ${selectedBatch}`, 14, 22);
-
-    const tableColumn = ["Student Name", "Class", "Status"];
-    const tableRows = [];
-
-    filteredStudents.forEach(student => {
-      const status = getStatusForDate(student._id) || 'Unmarked';
-      tableRows.push([student.name, student.className, status]);
-    });
-
+    const tableRows = filteredStudents.map(student => [student.name, student.className, getStatusForDate(student._id) || 'Unmarked']);
     autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 28,
+      head: [["Student Name", "Class", "Status"]], body: tableRows, startY: 28,
       didParseCell: function(data) {
         if (data.section === 'body' && data.column.index === 2) {
-          if (data.cell.raw === 'Present') {
-            data.cell.styles.textColor = [0, 153, 0];
-            data.cell.styles.fontStyle = 'bold';
-          } else if (data.cell.raw === 'Absent') {
-            data.cell.styles.textColor = [204, 0, 0];
-            data.cell.styles.fontStyle = 'bold';
-          }
+          if (data.cell.raw === 'Present') { data.cell.styles.textColor = [0, 153, 0]; data.cell.styles.fontStyle = 'bold'; } 
+          else if (data.cell.raw === 'Absent') { data.cell.styles.textColor = [204, 0, 0]; data.cell.styles.fontStyle = 'bold'; }
         }
       }
     });
-
     doc.save(`Attendance_Full_${selectedBatch}_${selectedDate}.pdf`);
   };
 
-  // --- FIX: GROUP-SAFE ABSENTEES PDF (No Phone Numbers) ---
   const generateAbsenteesPDF = () => {
     const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text(`Absentees Report`, 14, 15);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    const dateObj = new Date(selectedDate);
-    const formattedDate = dateObj.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+    doc.setFontSize(16); doc.text(`Absentees Report`, 14, 15); doc.setFontSize(11); doc.setTextColor(100);
+    const formattedDate = new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
     doc.text(`Date: ${formattedDate}  |  Batch: ${selectedBatch}`, 14, 22);
-
-    const tableColumn = ["Student Name", "Class"]; 
     const tableRows = [];
-
-    filteredStudents.forEach(student => {
-      if (getStatusForDate(student._id) === 'Absent') {
-        tableRows.push([student.name, student.className]);
-      }
-    });
-
-    if (tableRows.length === 0) {
-      alert("No students are marked absent for this date/batch.");
-      return;
-    }
-
+    filteredStudents.forEach(student => { if (getStatusForDate(student._id) === 'Absent') tableRows.push([student.name, student.className]); });
+    if (tableRows.length === 0) return alert("No students are marked absent.");
     autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 28,
-      didParseCell: function(data) {
-        if (data.section === 'body' && data.column.index === 0) {
-          data.cell.styles.textColor = [204, 0, 0]; 
-          data.cell.styles.fontStyle = 'bold';
-        }
-      }
+      head: [["Student Name", "Class"]], body: tableRows, startY: 28,
+      didParseCell: function(data) { if (data.section === 'body' && data.column.index === 0) { data.cell.styles.textColor = [204, 0, 0]; data.cell.styles.fontStyle = 'bold'; } }
     });
-
     doc.save(`Absentees_Only_${selectedBatch}_${selectedDate}.pdf`);
   };
 
@@ -298,13 +259,15 @@ const AdminDashboard = () => {
               <button onClick={() => setActiveTab('classroom')} className={`px-4 md:px-6 py-2 rounded-t-lg font-bold transition-colors whitespace-nowrap ${activeTab === 'classroom' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>🏫 Classroom</button>
               <button onClick={() => setActiveTab('academics')} className={`px-4 md:px-6 py-2 rounded-t-lg font-bold transition-colors whitespace-nowrap ${activeTab === 'academics' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>📝 Academics</button>
               <button onClick={() => setActiveTab('fees')} className={`px-4 md:px-6 py-2 rounded-t-lg font-bold transition-colors whitespace-nowrap ${activeTab === 'fees' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>💰 Fees</button>
+              <button onClick={() => setActiveTab('materials')} className={`px-4 md:px-6 py-2 rounded-t-lg font-bold transition-colors whitespace-nowrap ${activeTab === 'materials' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>📚 Materials</button>
               <button onClick={() => setActiveTab('notices')} className={`px-4 md:px-6 py-2 rounded-t-lg font-bold transition-colors whitespace-nowrap ${activeTab === 'notices' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>📢 Notices</button>
             </div>
           </div>
           <button onClick={() => setShowAddModal(true)} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded shadow font-bold whitespace-nowrap w-full md:w-auto">+ Admit Student</button>
         </div>
 
-        {activeTab !== 'notices' && (
+        {/* Global Filters */}
+        {(activeTab !== 'notices' && activeTab !== 'materials') && (
           <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row gap-4 md:gap-6 items-start md:items-center border border-gray-200">
             <div className="w-full md:w-auto flex-1">
               <label className="text-sm font-bold text-gray-500 uppercase block mb-1">
@@ -337,25 +300,22 @@ const AdminDashboard = () => {
                   <label className="font-bold text-gray-700 mr-3">Date:</label>
                   <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} max={new Date().toISOString().split('T')[0]} className="border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500"/>
                 </div>
-                
                 <div className="flex space-x-2">
                   <button onClick={generateAttendancePDF} className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded shadow text-sm font-bold transition-colors whitespace-nowrap">📄 Full Report</button>
                   <button onClick={generateAbsenteesPDF} className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded shadow text-sm font-bold transition-colors whitespace-nowrap">📄 Absentees</button>
                 </div>
               </div>
-
               <div className="flex space-x-2">
                 <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold border border-green-300">{presentTodayCount} P</span>
                 <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-bold border border-red-300">{absentTodayCount} A</span>
               </div>
             </div>
-
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="p-4 text-left font-bold text-gray-700 whitespace-nowrap">Student Info</th>
-                    <th className="p-4 text-center font-bold text-gray-700 whitespace-nowrap">Attendance ({timeFilter})</th>
+                    <th className="p-4 text-center font-bold text-gray-700 whitespace-nowrap">Attendance</th>
                     <th className="p-4 text-center font-bold text-blue-700 whitespace-nowrap">Mark for {selectedDate}</th>
                     <th className="p-4 text-right font-bold text-gray-700 whitespace-nowrap">Actions</th>
                   </tr>
@@ -399,7 +359,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* TAB 2: ACADEMICS (TEST SCORES) */}
+        {/* TAB 2: ACADEMICS */}
         {activeTab === 'academics' && (
           <div className="bg-white rounded-lg shadow-lg border-t-4 border-blue-600 overflow-hidden">
             <div className="p-6 border-b border-gray-200 bg-blue-50">
@@ -412,7 +372,6 @@ const AdminDashboard = () => {
                 </div>
               </div>
             </div>
-
             <div className="overflow-x-auto p-6">
               {selectedBatch === 'All' ? (
                 <div className="text-center p-8 bg-yellow-50 text-yellow-800 rounded-lg border border-yellow-200">
@@ -422,24 +381,15 @@ const AdminDashboard = () => {
                 <form onSubmit={handleSaveScores}>
                   <table className="min-w-full border border-gray-200 mb-6">
                     <thead className="bg-gray-100">
-                      <tr>
-                        <th className="p-3 text-left font-bold text-gray-700">Student Name</th>
-                        <th className="p-3 text-right font-bold text-gray-700">Marks Obtained</th>
-                      </tr>
+                      <tr><th className="p-3 text-left font-bold text-gray-700">Student Name</th><th className="p-3 text-right font-bold text-gray-700">Marks Obtained</th></tr>
                     </thead>
                     <tbody>
-                      {filteredStudents.length === 0 ? (
-                        <tr><td colSpan="2" className="p-4 text-center text-gray-500 italic">No students in this batch.</td></tr>
-                      ) : (
-                        filteredStudents.map(s => (
-                          <tr key={s._id} className="border-b hover:bg-gray-50">
-                            <td className="p-3 font-bold text-gray-800">{s.name}</td>
-                            <td className="p-3 text-right">
-                              <input type="number" placeholder="Score" max={testDetails.totalMarks} className="w-32 p-2 border rounded focus:ring-2 focus:ring-blue-500 text-center font-bold" value={studentMarks[s._id] || ''} onChange={e => setStudentMarks({...studentMarks, [s._id]: e.target.value})} />
-                            </td>
-                          </tr>
-                        ))
-                      )}
+                      {filteredStudents.length === 0 ? <tr><td colSpan="2" className="p-4 text-center text-gray-500 italic">No students.</td></tr> : filteredStudents.map(s => (
+                        <tr key={s._id} className="border-b hover:bg-gray-50">
+                          <td className="p-3 font-bold text-gray-800">{s.name}</td>
+                          <td className="p-3 text-right"><input type="number" placeholder="Score" max={testDetails.totalMarks} className="w-32 p-2 border rounded focus:ring-2 focus:ring-blue-500 text-center font-bold" value={studentMarks[s._id] || ''} onChange={e => setStudentMarks({...studentMarks, [s._id]: e.target.value})} /></td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                   <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow-md text-lg">💾 Save All Scores</button>
@@ -462,48 +412,64 @@ const AdminDashboard = () => {
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-100">
-                  <tr>
-                    <th className="p-4 text-left font-bold text-gray-700 whitespace-nowrap">Name</th>
-                    <th className="p-4 text-left font-bold text-gray-700 whitespace-nowrap">Status</th>
-                    <th className="p-4 text-right font-bold text-gray-700 whitespace-nowrap">Actions</th>
-                  </tr>
+                  <tr><th className="p-4 text-left font-bold text-gray-700 whitespace-nowrap">Name</th><th className="p-4 text-left font-bold text-gray-700 whitespace-nowrap">Status</th><th className="p-4 text-right font-bold text-gray-700 whitespace-nowrap">Actions</th></tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredStudents.length === 0 ? (
-                    <tr><td colSpan="3" className="p-4 text-center text-gray-500 italic">No students in this batch!</td></tr>
-                  ) : (
-                    filteredStudents.map(s => (
-                      <tr key={s._id} className="hover:bg-gray-50">
-                        <td className="p-4 font-bold whitespace-nowrap text-gray-800">{s.name}</td>
-                        <td className="p-4 whitespace-nowrap">
-                          {s.pendingBalance > 0 ? (
-                            <span className="text-red-600 font-bold text-lg">Rs. {s.pendingBalance} Due</span>
-                          ) : (
-                            <span className="text-green-600 font-bold text-lg">Cleared</span>
-                          )}
-                        </td>
-                        <td className="p-4 text-right whitespace-nowrap space-x-2">
-                          {s.pendingBalance > 0 ? (
-                            <>
-                              <button onClick={() => handleMarkPaid(s._id, s.pendingBalance)} className="bg-green-500 text-white px-4 py-2 rounded font-bold shadow-sm hover:bg-green-600">Mark Paid</button>
-                              <button onClick={() => handleFeeReminder(s.name, s.parentPhone, s.pendingBalance)} className="bg-yellow-100 text-yellow-800 border border-yellow-300 px-3 py-2 rounded font-bold shadow-sm hover:bg-yellow-200">
-                                <span className="mr-1">💬</span> WhatsApp
-                              </button>
-                            </>
-                          ) : (
-                            <span className="bg-green-50 text-green-700 border border-green-200 px-4 py-2 rounded font-bold inline-block">✅ All Clear</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                  {filteredStudents.length === 0 ? <tr><td colSpan="3" className="p-4 text-center text-gray-500 italic">No students.</td></tr> : filteredStudents.map(s => (
+                    <tr key={s._id} className="hover:bg-gray-50">
+                      <td className="p-4 font-bold whitespace-nowrap text-gray-800">{s.name}</td>
+                      <td className="p-4 whitespace-nowrap">{s.pendingBalance > 0 ? <span className="text-red-600 font-bold text-lg">Rs. {s.pendingBalance} Due</span> : <span className="text-green-600 font-bold text-lg">Cleared</span>}</td>
+                      <td className="p-4 text-right whitespace-nowrap space-x-2">
+                        {s.pendingBalance > 0 ? (
+                          <><button onClick={() => handleMarkPaid(s._id, s.pendingBalance)} className="bg-green-500 text-white px-4 py-2 rounded font-bold shadow-sm hover:bg-green-600">Mark Paid</button>
+                          <button onClick={() => handleFeeReminder(s.name, s.parentPhone, s.pendingBalance)} className="bg-yellow-100 text-yellow-800 border border-yellow-300 px-3 py-2 rounded font-bold shadow-sm hover:bg-yellow-200"><span className="mr-1">💬</span> WhatsApp</button></>
+                        ) : <span className="bg-green-50 text-green-700 border border-green-200 px-4 py-2 rounded font-bold inline-block">✅ All Clear</span>}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {/* TAB 4: NOTICES */}
+        {/* NEW TAB 4: MATERIALS */}
+        {activeTab === 'materials' && (
+          <div className="bg-white rounded-lg shadow-lg p-6 border-t-4 border-blue-600">
+            <h3 className="text-xl font-bold text-gray-700 mb-4">Upload Study Material (Google Drive Links)</h3>
+            <form onSubmit={handlePostMaterial} className="space-y-4 mb-8 bg-blue-50 p-6 rounded-lg border border-blue-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input required type="text" placeholder="Document Title (e.g., Math Notes Ch-1)" className="p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500" value={newMaterial.title} onChange={e => setNewMaterial({...newMaterial, title: e.target.value})} />
+                <select className="p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 bg-white" value={newMaterial.batch} onChange={e => setNewMaterial({...newMaterial, batch: e.target.value})}>
+                  {batches.map(b => <option key={b} value={b}>{b === 'All' ? 'Assign to ALL Classes' : `Assign to ${b} Only`}</option>)}
+                </select>
+              </div>
+              <input required type="url" placeholder="Paste Google Drive Link Here" className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500" value={newMaterial.driveLink} onChange={e => setNewMaterial({...newMaterial, driveLink: e.target.value})} />
+              <input type="text" placeholder="Short Description (Optional)" className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500" value={newMaterial.description} onChange={e => setNewMaterial({...newMaterial, description: e.target.value})} />
+              
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-sm font-bold text-red-600">⚠️ Make sure the Google Drive link is set to "Anyone with the link can view".</span>
+                <button type="submit" className="bg-blue-600 text-white px-8 py-3 rounded font-bold hover:bg-blue-700 shadow-md">Upload Material</button>
+              </div>
+            </form>
+
+            <h3 className="font-bold text-gray-500 mb-4 uppercase text-sm border-b pb-2">Uploaded Materials History</h3>
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              {materials.length === 0 ? <p className="text-gray-500 italic">No materials uploaded yet.</p> : materials.map(m => (
+                <div key={m._id} className="p-4 border border-gray-200 rounded bg-white hover:bg-gray-50 flex justify-between items-center">
+                  <div>
+                    <p className="font-bold text-gray-800 text-lg">{m.title} <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded ml-2">{m.batch}</span></p>
+                    <p className="text-gray-600 mt-1 text-sm">{m.description}</p>
+                    <a href={m.driveLink} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline mt-2 inline-block font-bold">🔗 Open Link</a>
+                  </div>
+                  <button onClick={() => handleDeleteMaterial(m._id)} className="text-red-500 hover:text-red-700 font-bold ml-4">🗑️ Delete</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: NOTICES */}
         {activeTab === 'notices' && (
           <div className="bg-white rounded-lg shadow-lg p-6 border-t-4 border-blue-600">
             <h3 className="text-xl font-bold text-gray-700 mb-4">Broadcast Emergency Notice</h3>
@@ -548,10 +514,7 @@ const AdminDashboard = () => {
                   <option value="Performance">Performance (Positive)</option><option value="Complaint">Complaint (Negative)</option><option value="Note">General Note</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Details</label>
-                <textarea required rows="3" className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500" value={remarkData.text} onChange={e => setRemarkData({...remarkData, text: e.target.value})}></textarea>
-              </div>
+              <div><label className="block text-sm text-gray-600 mb-1">Details</label><textarea required rows="3" className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500" value={remarkData.text} onChange={e => setRemarkData({...remarkData, text: e.target.value})}></textarea></div>
               <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded font-bold">Save Remark</button>
             </form>
           </div>
@@ -561,21 +524,12 @@ const AdminDashboard = () => {
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="bg-gray-900 text-white p-4 flex justify-between items-center">
-              <h3 className="font-bold text-lg">Admit Student</h3>
-              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
-            </div>
+            <div className="bg-gray-900 text-white p-4 flex justify-between items-center"><h3 className="font-bold text-lg">Admit Student</h3><button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-white text-2xl font-bold">&times;</button></div>
             <div className="overflow-y-auto p-6">
               <form onSubmit={handleAddStudent} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><label className="block text-sm text-gray-600 mb-1">Full Name</label><input required type="text" className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">Standard/Class</label>
-                    <select required className="w-full border p-2 rounded bg-white focus:ring-2 focus:ring-green-500" value={formData.className} onChange={e => setFormData({...formData, className: e.target.value})}>
-                      <option value="" disabled>Select Class...</option>
-                      {[...Array(12)].map((_, i) => <option key={i+1} value={`Class ${i + 1}`}>Class {i + 1}</option>)}
-                    </select>
-                  </div>
+                  <div><label className="block text-sm text-gray-600 mb-1">Standard/Class</label><select required className="w-full border p-2 rounded bg-white focus:ring-2 focus:ring-green-500" value={formData.className} onChange={e => setFormData({...formData, className: e.target.value})}><option value="" disabled>Select Class...</option>{[...Array(12)].map((_, i) => <option key={i+1} value={`Class ${i + 1}`}>Class {i + 1}</option>)}</select></div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><label className="block text-sm text-gray-600 mb-1">Parent WhatsApp</label><input required type="text" className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500" value={formData.parentPhone} onChange={e => setFormData({...formData, parentPhone: e.target.value})} /></div>
