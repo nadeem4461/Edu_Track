@@ -204,7 +204,7 @@ const AdminDashboard = () => {
   // --- PDF GENERATION ---
   const generateFeePDF = () => {
     const doc = new jsPDF();
-    doc.text(`EduTrack - Pending Fee Report (${selectedBatch})`, 14, 15);
+    doc.text(`MS Tution Classes - Pending Fee Report (${selectedBatch})`, 14, 15);
     const defaulters = filteredStudents.filter(s => s.pendingBalance > 0);
     autoTable(doc, { head: [['Student Name', 'Class', 'Parent Phone', 'Due Amount']], body: defaulters.map(s => [s.name, s.className, s.parentPhone, `Rs. ${s.pendingBalance}`]), startY: 20 });
     doc.save(`Fee-Report-${selectedBatch}.pdf`);
@@ -246,7 +246,7 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-gray-900 text-white p-4 shadow-md flex justify-between items-center">
-        <h1 className="text-xl font-bold tracking-wider truncate">EduTrack Admin</h1>
+        <h1 className="text-xl font-bold tracking-wider truncate">MS Tution Classes Admin</h1>
         <button onClick={() => navigate('/')} className="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-sm font-semibold whitespace-nowrap ml-2">EXIT</button>
       </nav>
 

@@ -119,7 +119,7 @@ const StudentDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
       <nav className="bg-red-700 text-white p-4 shadow-md flex justify-between items-center sticky top-0 z-50">
-        <h1 className="text-xl font-bold tracking-wider">EduTrack Portal</h1>
+        <h1 className="text-xl font-bold tracking-wider">MS Tution Classes Portal</h1>
         <button onClick={handleLogout} className="bg-red-800 hover:bg-red-900 px-4 py-2 rounded text-sm font-semibold transition-colors">LOGOUT</button>
       </nav>
 

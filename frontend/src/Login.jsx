@@ -55,7 +55,7 @@ const Login = () => {
         
         {/* Header */}
         <div className="bg-red-700 p-6 text-center">
-          <h1 className="text-3xl font-bold text-white tracking-wider">EduTrack</h1>
+          <h1 className="text-3xl font-bold text-white tracking-wider">MS Tution Classes</h1>
           <p className="text-red-200 mt-1">Tuition Management System</p>
         </div>
 
