@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosInstance from './axiosInstance';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -33,15 +33,15 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const studentRes = await axios.get('http://localhost:5000/api/students');
-      const attendanceRes = await axios.get('http://localhost:5000/api/attendance/all');
+      const studentRes = await axiosInstance.get('/api/students');
+      const attendanceRes = await axiosInstance.get('/api/attendance/all');
       
       let noticeRes = { data: [] };
-      try { noticeRes = await axios.get('http://localhost:5000/api/announcements'); } catch (e) {}
+      try { noticeRes = await axiosInstance.get('/api/announcements'); } catch (e) {}
       
       // Fetch Materials
       let matRes = { data: [] };
-      try { matRes = await axios.get('http://localhost:5000/api/materials'); } catch (e) {}
+      try { matRes = await axiosInstance.get('/api/materials'); } catch (e) {}
       
       setStudents(studentRes.data);
       setAllAttendance(attendanceRes.data);
@@ -97,7 +97,7 @@ const AdminDashboard = () => {
   const handleDeleteStudent = async (studentId, studentName) => {
     if (!window.confirm(`Are you absolutely sure you want to permanently delete ${studentName}?`)) return;
     try {
-      await axios.delete(`http://localhost:5000/api/students/${studentId}`);
+      await axiosInstance.delete(`/api/students/${studentId}`);
       fetchData();
     } catch (error) { alert('Error removing student.'); }
   };
@@ -121,7 +121,7 @@ const AdminDashboard = () => {
       return [...prev, { studentId, status: finalStatus, date: selectedDate }];
     });
     try {
-      await axios.post('http://localhost:5000/api/attendance', { studentId, status: finalStatus, date: selectedDate });
+      await axiosInstance.post('/api/attendance', { studentId, status: finalStatus, date: selectedDate });
       fetchData(); 
     } catch (error) { fetchData(); }
   };
@@ -129,7 +129,7 @@ const AdminDashboard = () => {
   const handleMarkPaid = async (studentId, amount) => {
     if (!window.confirm(`Clear Rs. ${amount}?`)) return;
     try {
-      await axios.post('http://localhost:5000/api/fees/pay', { studentId, amount, paymentMode: 'Cash' });
+      await axiosInstance.post('/api/fees/pay', { studentId, amount, paymentMode: 'Cash' });
       fetchData();
     } catch (error) { alert('Error updating payment'); }
   };
@@ -137,7 +137,7 @@ const AdminDashboard = () => {
   const handleAddRemark = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`http://localhost:5000/api/students/${selectedStudent._id}/remarks`, remarkData);
+      await axiosInstance.post(`/api/students/${selectedStudent._id}/remarks`, remarkData);
       setShowRemarkModal(false);
       setRemarkData({ type: 'Note', text: '' });
       fetchData();
@@ -147,7 +147,7 @@ const AdminDashboard = () => {
   const handleAddStudent = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/students', formData);
+      await axiosInstance.post('/api/students', formData);
       setShowAddModal(false);
       setFormData({ name: '', className: '', parentPhone: '', loginPhone: '', totalFee: '', day: '', month: '', year: '' });
       fetchData();
@@ -157,7 +157,7 @@ const AdminDashboard = () => {
   const handlePostNotice = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/announcements', newNotice);
+      await axiosInstance.post('/api/announcements', newNotice);
       setNewNotice({ title: '', message: '', targetBatch: 'All', sendWhatsapp: false });
       fetchData();
     } catch (error) { alert('Error posting announcement.'); }
@@ -169,7 +169,7 @@ const AdminDashboard = () => {
     try {
       const promises = Object.entries(studentMarks).map(([studentId, marksObtained]) => {
         if (marksObtained !== '') { 
-          return axios.post(`http://localhost:5000/api/students/${studentId}/scores`, {
+          return axiosInstance.post(`/api/students/${studentId}/scores`, {
             testName: testDetails.testName, totalMarks: testDetails.totalMarks, marksObtained: Number(marksObtained)
           });
         }
@@ -185,7 +185,7 @@ const AdminDashboard = () => {
   const handlePostMaterial = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/materials', newMaterial);
+      await axiosInstance.post('/api/materials', newMaterial);
       setNewMaterial({ title: '', description: '', batch: 'All', driveLink: '' });
       alert("Material uploaded successfully!");
       fetchData();
@@ -196,7 +196,7 @@ const AdminDashboard = () => {
   const handleDeleteMaterial = async (id) => {
     if(!window.confirm("Delete this material link?")) return;
     try {
-      await axios.delete(`http://localhost:5000/api/materials/${id}`);
+      await axiosInstance.delete(`/api/materials/${id}`);
       fetchData();
     } catch (error) { alert('Error deleting material.'); }
   };

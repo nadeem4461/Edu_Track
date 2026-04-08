@@ -50,3 +50,13 @@ export const getStudentAttendance = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+// @desc    Get all attendance records for the admin
+// @route   GET /api/attendance/all
+export const getAllAttendance = async (req, res) => {
+  try {
+    const records = await Attendance.find({});
+    res.json(records);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

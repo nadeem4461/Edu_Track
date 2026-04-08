@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axiosInstance from './axiosInstance';
 
 const Login = () => {
   const [activeTab, setActiveTab] = useState('student'); // 'student' or 'admin'
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // Student Form State
+  // Student Form State (MSRIT Style Dropdowns)
   const [phone, setPhone] = useState('');
-  const [dob, setDob] = useState('');
+  const [day, setDay] = useState('');
+  const [month, setMonth] = useState('');
+  const [year, setYear] = useState('');
 
   // Admin Form State
   const [username, setUsername] = useState('');
@@ -18,16 +20,20 @@ const Login = () => {
   const handleStudentLogin = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // Stitch the 3 dropdowns together to match the database format (YYYY-MM-DD)
+    const formattedDob = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
     try {
-      const { data } = await axios.post('http://localhost:5000/api/auth/student', { 
+      const { data } = await axiosInstance.post('/api/auth/student', { 
         loginPhone: phone, 
-        dob: dob 
+        dob: formattedDob 
       });
       // Save data locally and redirect
-      localStorage.setItem('studentData', JSON.stringify({ id: data._id, name: data.name, className: data.className }));
+      localStorage.setItem('studentData', JSON.stringify({ id: data._id, name: data.name, className: data.className, token: data.token }));
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.message || 'Invalid Phone Number or Date of Birth');
     }
   };
 
@@ -35,11 +41,11 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
-      const { data } = await axios.post('http://localhost:5000/api/auth/admin', { username, password });
+      const { data } = await axiosInstance.post('/api/auth/admin', { username, password });
       localStorage.setItem('adminData', JSON.stringify(data));
       navigate('/admin');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.message || 'Invalid Admin Credentials');
     }
   };
 
@@ -82,10 +88,41 @@ const Login = () => {
                 <label className="block text-sm font-bold text-gray-700 mb-2">Registered Phone Number</label>
                 <input required type="text" placeholder="Enter mobile number" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none transition-all" value={phone} onChange={e => setPhone(e.target.value)} />
               </div>
+              
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Date of Birth (Password)</label>
-                <input required type="date" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none transition-all text-gray-700" value={dob} onChange={e => setDob(e.target.value)} />
+                {/* --- 3 SEPARATE DROPDOWNS (MSRIT STYLE) --- */}
+                <div className="flex space-x-2">
+                  
+                  {/* DAY DROPDOWN */}
+                  <select required className="w-1/3 px-2 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white text-gray-700" value={day} onChange={e => setDay(e.target.value)}>
+                    <option value="" disabled>Day</option>
+                    {[...Array(31)].map((_, i) => (
+                      <option key={i+1} value={i+1}>{String(i+1).padStart(2, '0')}</option>
+                    ))}
+                  </select>
+
+                  {/* MONTH DROPDOWN */}
+                  <select required className="w-1/3 px-2 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white text-gray-700" value={month} onChange={e => setMonth(e.target.value)}>
+                    <option value="" disabled>Month</option>
+                    {[...Array(12)].map((_, i) => (
+                      <option key={i+1} value={i+1}>{String(i+1).padStart(2, '0')}</option>
+                    ))}
+                  </select>
+
+                  {/* YEAR DROPDOWN */}
+                  <select required className="w-1/3 px-2 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white text-gray-700" value={year} onChange={e => setYear(e.target.value)}>
+                    <option value="" disabled>Year</option>
+                    {/* Generates years from 2025 down to 1995 */}
+                    {[...Array(31)].map((_, i) => {
+                      const y = 2025 - i; 
+                      return <option key={y} value={y}>{y}</option>
+                    })}
+                  </select>
+
+                </div>
               </div>
+
               <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-colors text-lg">
                 Login to Portal
               </button>

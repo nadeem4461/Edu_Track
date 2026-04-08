@@ -8,12 +8,22 @@ const studentSchema = new mongoose.Schema({
   totalFee: { type: Number, required: true },
   pendingBalance: { type: Number, required: true },
   dob: { type: String, required: true },
-  // ADD THIS NEW SECTION:
+  
+  // Sir's Feedback
   remarks: [{
     type: { type: String, enum: ['Performance', 'Complaint', 'Note'] },
     text: { type: String, required: true },
     date: { type: Date, default: Date.now }
+  }],
+
+  // NEW: Phase 3 - Academic Scores
+  scores: [{
+    testName: { type: String, required: true },
+    marksObtained: { type: Number, required: true },
+    totalMarks: { type: Number, required: true },
+    date: { type: Date, default: Date.now }
   }]
+  
 }, { timestamps: true });
 
 const Student = mongoose.model('Student', studentSchema);

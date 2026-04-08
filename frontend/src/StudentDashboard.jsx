@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axiosInstance from './axiosInstance';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -20,7 +20,7 @@ const StudentDashboard = () => {
 
   const fetchFreshStudentData = async (studentId) => {
     try {
-      const { data } = await axios.get(`http://localhost:5000/api/students/${studentId}`);
+      const { data } = await axiosInstance.get(`/api/students/${studentId}`);
       setStudent(data); 
     } catch (error) { console.error("Error fetching fresh student data:", error); }
   };
@@ -41,21 +41,21 @@ const StudentDashboard = () => {
 
   const fetchAttendance = async (studentId) => {
     try {
-      const { data } = await axios.get(`http://localhost:5000/api/attendance/${studentId}`);
+      const { data } = await axiosInstance.get(`/api/attendance/${studentId}`);
       setAttendance(data);
     } catch (error) {}
   };
 
   const fetchAnnouncements = async () => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/announcements');
+      const { data } = await axiosInstance.get('/api/announcements');
       setAnnouncements(data);
     } catch (error) {}
   };
 
   const fetchMaterials = async () => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/materials');
+      const { data } = await axiosInstance.get('/api/materials');
       setMaterials(data);
     } catch (error) {}
   };

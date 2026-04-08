@@ -1,7 +1,9 @@
 import express from 'express';
-import { markAttendance ,getStudentAttendance} from '../controllers/attendanceController.js';
+import { protect, adminOnly } from '../middleware/authMiddleware.js';
+import { markAttendance ,getStudentAttendance,getAllAttendance} from '../controllers/attendanceController.js';
 const router = express.Router();
 
-router.post('/', markAttendance);
-router.get('/:studentId', getStudentAttendance);
+router.post('/', protect, adminOnly, markAttendance);
+router.get('/all', protect, adminOnly, getAllAttendance);
+router.get('/:studentId', protect, getStudentAttendance);
 export default router;
