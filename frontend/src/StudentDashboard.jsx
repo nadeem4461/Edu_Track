@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from './axiosInstance';
+import Cookies from 'js-cookie';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -26,7 +27,7 @@ const StudentDashboard = () => {
   };
 
   useEffect(() => {
-    const savedData = localStorage.getItem('studentData');
+    const savedData = sessionStorage.getItem('studentData');
     if (savedData) {
       const parsedStudent = JSON.parse(savedData);
       setStudent(parsedStudent); 
@@ -110,7 +111,8 @@ const StudentDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('studentData');
+    sessionStorage.removeItem('studentData');
+    Cookies.remove('token');
     navigate('/');
   };
 

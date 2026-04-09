@@ -1,15 +1,17 @@
 import { Navigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
 
 const ProtectedRoute = ({ children, roleRequired }) => {
-  const studentData = localStorage.getItem('studentData');
-  const adminData = localStorage.getItem('adminData');
+  const studentData = sessionStorage.getItem('studentData');
+  const adminData = sessionStorage.getItem('adminData');
+  const token = Cookies.get('token');
 
   if (roleRequired === 'admin') {
-    if (!adminData) {
+    if (!adminData || !token) {
       return <Navigate to="/" replace />;
     }
   } else if (roleRequired === 'student') {
-    if (!studentData) {
+    if (!studentData || !token) {
       return <Navigate to="/" replace />;
     }
   }

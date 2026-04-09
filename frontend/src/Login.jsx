@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from './axiosInstance';
+import Cookies from 'js-cookie';
 
 const Login = () => {
   const [activeTab, setActiveTab] = useState('student'); // 'student' or 'admin'
@@ -30,7 +31,8 @@ const Login = () => {
         dob: formattedDob 
       });
       // Save data locally and redirect
-      localStorage.setItem('studentData', JSON.stringify({ id: data._id, name: data.name, className: data.className, token: data.token }));
+      sessionStorage.setItem('studentData', JSON.stringify({ id: data._id, name: data.name, className: data.className }));
+      Cookies.set('token', data.token);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid Phone Number or Date of Birth');
@@ -42,7 +44,9 @@ const Login = () => {
     setError('');
     try {
       const { data } = await axiosInstance.post('/api/auth/admin', { username, password });
-      localStorage.setItem('adminData', JSON.stringify(data));
+      const { token, ...adminInfo } = data;
+      sessionStorage.setItem('adminData', JSON.stringify(adminInfo));
+      Cookies.set('token', token);
       navigate('/admin');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid Admin Credentials');

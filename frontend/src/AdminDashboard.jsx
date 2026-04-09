@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from './axiosInstance';
 import { useNavigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -247,7 +248,7 @@ const AdminDashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-gray-900 text-white p-4 shadow-md flex justify-between items-center">
         <h1 className="text-xl font-bold tracking-wider truncate">MS Tution Classes Admin</h1>
-        <button onClick={() => navigate('/')} className="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-sm font-semibold whitespace-nowrap ml-2">EXIT</button>
+        <button onClick={() => { sessionStorage.removeItem('adminData'); Cookies.remove('token'); navigate('/'); }} className="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-sm font-semibold whitespace-nowrap ml-2">EXIT</button>
       </nav>
 
       <div className="max-w-7xl mx-auto mt-4 md:mt-8 p-4">
